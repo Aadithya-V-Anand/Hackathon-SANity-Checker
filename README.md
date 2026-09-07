@@ -400,6 +400,12 @@ surfacing content most relevant to the user's industry and seniority level.
 * [Tochiro File Organizer](https://github.com/ofrancon/tochiro):
 a macOS file organization assistant with a dedicated UI to analyze a folder,
 create a plan for moving the files, ask for approval and execute the moves.
+* **Community Resource Navigator** (registries/basic/community_resource_navigator.hocon):
+an example agent network that helps locate and verify local community resources (shelters, food banks, services).
+It uses helper coded tools in the `coded_tools` folder; see
+[coded_tools/basic/community_resource_tools/__init__.py](coded_tools/basic/community_resource_tools/__init__.py#L1)
+for the implementations (`coordinator.py`, `eligibility_checker.py`, `resource_finder.py`, `verification_agent.py`).
+Import it with `ns import basic/community_resource_navigator` or `ns import community_resource_navigator`.
 * [Legacy Business-Rule Extractor](https://github.com/Sivakumarraj/neuro-san-legacy-analyzer):
 a 6-agent network that extracts business rules from legacy COBOL, Java, and PL/SQL code,
 pairing deterministic CodedTool parsers with LLM agents to produce a modernization-ready
