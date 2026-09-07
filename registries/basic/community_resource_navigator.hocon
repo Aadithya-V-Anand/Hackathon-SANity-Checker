@@ -1,0 +1,119 @@
+{
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "Community Resource Navigator: a multi-agent network to locate, verify, and coordinate access to local social services and volunteer support.",
+        "tags": ["society", "community", "resources", "civic"],
+        "sample_queries": [
+            "Find nearby food banks open today for families with children.",
+            "Check eligibility for emergency housing assistance in Seattle for a single adult.",
+            "Coordinate three volunteers to deliver groceries to an elderly resident tomorrow morning."
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "navigator",
+            "function": {
+                "description": "Acts as the front-man interface for users seeking community resources. Accepts natural language requests and orchestrates the specialist agents to return verified, actionable guidance."
+            },
+            "instructions": """
+You are the Community Resource Navigator front agent.
+When given a user request, you will:
+  1) Clarify any missing details (location, urgency, household composition) in at most two follow-up questions.
+  2) Call `resource_finder` with structured parameters to locate candidate resources.
+  3) For each candidate, call `eligibility_checker` to determine likely eligibility and `verification_agent` to check contact/status.
+  4) If coordination (volunteers, appointments) is requested, call `coordinator` and summarize next steps for the user.
+Always prioritize user privacy: never request or store sensitive personal identifiers unless absolutely required and explicitly consented to.
+Return a concise, prioritized list of resource options with contact info, eligibility notes, and next actions.
+""",
+            "tools": ["resource_finder", "eligibility_checker", "verification_agent", "coordinator"]
+        },
+
+        {
+            "name": "resource_finder",
+            "function": {
+                "description": "Searches local directories, official datasets, and trusted community sources for services matching the user's needs.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {"type": "string", "description": "City, state, or postal code"},
+                        "service_type": {"type": "string", "description": "Type of resource (food bank, shelter, mental health, legal aid, etc.)"},
+                        "urgency": {"type": "string", "description": "urgency level: immediate, within 24h, flexible"}
+                    },
+                    "required": ["location", "service_type"]
+                }
+            },
+            "instructions": """
+You are a directory searcher for community resources.
+Return up to 5 nearby options ranked by relevance and reliability, including name, address, hours, contact phone/email, expected wait time (if known), and a short source citation.
+Prefer official and community-verified sources over unmoderated third-party listings.
+""",
+            "command": "Search authoritative sources for matching community resources"
+        },
+
+        {
+            "name": "eligibility_checker",
+            "function": {
+                "description": "Evaluates likely eligibility for a resource based on program rules and the user's stated attributes.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "resource_id": {"type": "string"},
+                        "household": {"type": "object", "description": "Non-sensitive descriptors like household_size, ages, income_bracket"}
+                    },
+                    "required": ["resource_id"]
+                }
+            },
+            "instructions": """
+You are given a resource entry and non-sensitive household attributes.
+Use published program rules and common practice to state whether the household is likely eligible, unlikely eligible, or needs further documentation.
+If documentation is typically required, list the minimal kinds of documents (proof of income, ID, residency) generically.
+Do not request or output sensitive identifiers (SSNs, full DOBs, exact income amounts).
+""",
+            "command": "Assess likely eligibility for a resource"
+        },
+
+        {
+            "name": "verification_agent",
+            "function": {
+                "description": "Attempts to verify contact details, hours, and operational status using live sources or recent authoritative listings.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "resource_id": {"type": "string"},
+                        "resource_record": {"type": "object"}
+                    },
+                    "required": ["resource_id"]
+                }
+            },
+            "instructions": """
+Check the resource's publicly listed phone, website, or social feed for recent updates.
+If contact attempts are non-trivial, note verification confidence: high/medium/low and include the timestamp and source of the verification.
+If information is stale or conflicting, mark accordingly and prioritize alternatives.
+""",
+            "command": "Verify resource contact and status"
+        },
+
+        {
+            "name": "coordinator",
+            "function": {
+                "description": "Handles logistics like volunteer coordination, appointment booking suggestions, and templated outreach messages.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": {"type": "string", "description": "deliveries, appointments, volunteer scheduling"},
+                        "details": {"type": "object"}
+                    },
+                    "required": ["task"]
+                }
+            },
+            "instructions": """
+You prepare concise, privacy-preserving coordination plans.
+For volunteer tasks, produce a small checklist, suggested schedule, contact script, and minimal safety guidance.
+For appointment booking, provide step-by-step actions the requester can take (phone script, required documents, best times to call) rather than booking directly.
+""",
+            "tools": ["verification_agent"]
+        }
+    ]
+}

@@ -1,0 +1,114 @@
+{
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "QEA Test Background: an agent network to generate test backgrounds, scenarios, data plans, and risk analyses to support Quality Engineering Assistants (QEA).",
+        "tags": ["qea", "testing", "quality", "automation"],
+        "sample_queries": [
+            "Create a test background for regression testing a payments API with intermittent failures.",
+            "Generate test data and env plan for load testing the user-profile service for 100k users.",
+            "Identify likely flaky test sources given a failing integration test and suggest mitigations."
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "qea_lead",
+            "function": {
+                "description": "Front-man that accepts QEA requests and orchestrates specialist agents to produce a complete test background package."
+            },
+            "instructions": """
+You are the QEA Lead agent. On receiving a request, you should:
+  1) Clarify any missing context (system under test, environment, objectives, SLAs) using at most two follow-ups.
+  2) Call `scenario_generator` to produce prioritized test scenarios and acceptance criteria.
+  3) Call `env_planner` to produce an environment and tooling checklist with provisioning hints.
+  4) Call `test_data_generator` to outline realistic but privacy-safe data generation approaches.
+  5) Call `risk_analyzer` to surface likely flaky points and test instability mitigations.
+Return a packaged plan including scenarios, data plan, env checklist, and risk mitigation notes.
+Always label any assumptions and confidence levels for each recommendation.
+""",
+            "tools": ["scenario_generator", "env_planner", "test_data_generator", "risk_analyzer"]
+        },
+
+        {
+            "name": "scenario_generator",
+            "function": {
+                "description": "Generates prioritized test scenarios, test steps, and clear acceptance criteria.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "system": {"type": "string"},
+                        "area": {"type": "string"},
+                        "goal": {"type": "string"}
+                    },
+                    "required": ["system", "goal"]
+                }
+            },
+            "instructions": """
+Produce a short list of test scenarios (functional, regression, integration, load, chaos) prioritized by user goal.
+For each scenario include preconditions, test steps, expected results, and an automated vs manual recommendation.
+Provide a confidence indicator and any assumptions.
+""",
+            "command": "Generate prioritized test scenarios and acceptance criteria"
+        },
+
+        {
+            "name": "env_planner",
+            "function": {
+                "description": "Produces an environment provisioning checklist, required services, and suggested tooling for test execution and observation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scale": {"type": "string"},
+                        "observability": {"type": "string"}
+                    }
+                }
+            },
+            "instructions": """
+List components to provision (databases, queues, mock services), recommended instance sizes for the requested scale, and observability hooks (metrics, traces, logs).
+If cloud resources are involved, suggest cost-effective strategies (spot instances, sample sizes) and cleanup steps.
+""",
+            "command": "Plan test environment and observability"
+        },
+
+        {
+            "name": "test_data_generator",
+            "function": {
+                "description": "Outlines data generation strategies that are realistic yet privacy-preserving, including anonymization or synthetic approaches.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "data_domains": {"type": "array"},
+                        "privacy_level": {"type": "string"}
+                    }
+                }
+            },
+            "instructions": """
+Recommend methods for generating test datasets: synthetic, masked production sampling, schema-aware transformers.
+Include sample generation commands or pseudocode, size estimates, and tips for seeding edge cases and performance-sensitive records.
+Always uphold privacy: never suggest extracting unanonymized PII without explicit legal authorization.
+""",
+            "command": "Generate test data strategy and examples"
+        },
+
+        {
+            "name": "risk_analyzer",
+            "function": {
+                "description": "Analyzes likely failure modes, test flakiness sources, and suggests mitigation and monitoring strategies.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "recent_failures": {"type": "array"},
+                        "test_type": {"type": "string"}
+                    }
+                }
+            },
+            "instructions": """
+Given test outputs or descriptions of failures, identify probable root causes (timing, resource contention, order dependency, flaky external services).
+Suggest concrete mitigations: increased timeouts, retries with idempotency, dependency mocks, test isolation, or targeted monitoring alerts.
+Report confidence and tell the user which quick checks to perform first.
+""",
+            "command": "Analyze failures and suggest mitigations"
+        }
+    ]
+}
